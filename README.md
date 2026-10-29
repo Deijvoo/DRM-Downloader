@@ -3,6 +3,28 @@
 ## What does this script do?
 This is a modified version of TPD-Keys that automatically downloads, decrypts, verifies, and merges the mp4 file after grabbing the keys. This version is designed for streams that only use one key for audio and video.
 
+## Fixes in this fork
+
+This fork fixes omitted-country crashes, explicit mode selection, the empty PID prompt, and subprocess error reporting. The `--verbose` flag is now respected. Progress messages no longer print decryption keys, proxy credentials, or full command arguments. External-program errors are still printed as received; remove sensitive data before sharing logs.
+
+Tests cover CLI routing with mocked network, device, and media-tool calls, plus real local subprocess success and failure. They do not verify downloads, licence acceptance, or Voyo compatibility. Device credentials and service-specific configuration are still required. The original single-key and MP4/M4A assumptions remain.
+
+### Local setup and checks
+
+Use Python 3.11 (the version used for this fork's tests). From the repository folder on macOS/Linux:
+
+```sh
+python3.11 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python -m unittest -v
+python drmdl.py --help
+```
+
+On Windows PowerShell, create the environment with `py -3.11 -m venv .venv`, then use `.venv\Scripts\python.exe` instead of `python` for the remaining commands. Activation is optional.
+
+The Python requirements do not install the external tools listed below. Those tools must also be on PATH for actual downloads. No account, device file, or external media tool is needed to run the tests.
+
 ## PATH Requirements
 1. [python](https://www.python.org/downloads/release/python-390/)
 2. [ffmpeg](https://ffmpeg.org/download.html)

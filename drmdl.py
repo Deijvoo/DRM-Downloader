@@ -148,6 +148,7 @@ custom_headers = {
 
 
 def request_decrkey(wvdfile, ipssh, ilicurl, country_code, pid, selection, channel, live_token):
+    country_code = country_code or ""
     if selection == 1:
         return request_generic_noheaders(wvdfile, ipssh, ilicurl, country_code)
     elif selection == 2:
@@ -175,7 +176,7 @@ def request_custom(wvdfile, ipssh, ilicurl, country_code):
         proxies = {
             "http": proxy
         }
-        print(f"Using proxy {proxies['http']}")
+        print("Using proxy.")
         licence = requests.post(ilicurl, data=challenge, headers=custom_headers, proxies=proxies)
     else:
         print("Proxy-less request.")
@@ -188,7 +189,6 @@ def request_custom(wvdfile, ipssh, ilicurl, country_code):
         if key.type != 'SIGNING':
             fkeys += key.kid.hex + ":" + key.key.hex() + "\n"
     print("")
-    print(fkeys)
     cdm.close(session_id)
     return fkeys
 
@@ -205,7 +205,7 @@ def request_generic_noheaders(wvdfile, ipssh, ilicurl, country_code):
         proxies = {
             "http": proxy
         }
-        print(f"Using proxy {proxies['http']}")
+        print("Using proxy.")
         licence = requests.post(ilicurl, proxies=proxies, data=challenge)
     else:
         print("Proxy-less request.")
@@ -217,7 +217,6 @@ def request_generic_noheaders(wvdfile, ipssh, ilicurl, country_code):
         if key.type != 'SIGNING':
             fkeys += key.kid.hex + ":" + key.key.hex() + "\n"
     print("")
-    print(fkeys)
     cdm.close(session_id)
     return fkeys
 
@@ -239,7 +238,7 @@ def request_generic_headers(wvdfile, ipssh, ilicurl, country_code):
         proxies = {
             "http": proxy
         }
-        print(f"Using proxy {proxies['http']}")
+        print("Using proxy.")
         licence = requests.post(ilicurl, data=challenge, headers=generic_headers, proxies=proxies)
     else:
         print("Proxy-less request.")
@@ -251,7 +250,6 @@ def request_generic_headers(wvdfile, ipssh, ilicurl, country_code):
         if key.type != 'SIGNING':
             fkeys += key.kid.hex + ":" + key.key.hex() + "\n"
     print("")
-    print(fkeys)
     cdm.close(session_id)
     return fkeys
 
@@ -268,7 +266,7 @@ def request_widevine_challenge(wvdfile, ipssh, ilicurl, pid, country_code):
         proxies = {
             "http": proxy
         }
-        print(f"Using proxy {proxies['http']}")
+        print("Using proxy.")
         licence = requests.post(ilicurl, headers=DRMHeaders.headers, proxies=proxies, json={
             "getRawWidevineLicense":
                 {
@@ -292,7 +290,6 @@ def request_widevine_challenge(wvdfile, ipssh, ilicurl, pid, country_code):
         if key.type != 'SIGNING':
             fkeys += key.kid.hex + ":" + key.key.hex() + "\n"
     print("")
-    print(fkeys)
     cdm.close(session_id)
     return fkeys
 
@@ -309,7 +306,7 @@ def request_generic_drmheaderspy(wvdfile, ipssh, ilicurl, country_code):
         proxies = {
             "http": proxy
         }
-        print(f"Using proxy {proxies['http']}")
+        print("Using proxy.")
         licence = requests.post(ilicurl, data=challenge, headers=DRMHeaders.headers, proxies=proxies)
     else:
         print("Proxy-less request.")
@@ -321,7 +318,6 @@ def request_generic_drmheaderspy(wvdfile, ipssh, ilicurl, country_code):
         if key.type != 'SIGNING':
             fkeys += key.kid.hex + ":" + key.key.hex() + "\n"
     print("")
-    print(fkeys)
     cdm.close(session_id)
     return fkeys
 
@@ -340,7 +336,7 @@ def request_youtube(wvdfile, ilicurl, country_code):
         proxies = {
             "http": proxy
         }
-        print(f"Using proxy {proxies['http']}")
+        print("Using proxy.")
         licence = requests.post(ilicurl, cookies=DRMHeaders.cookies, headers=DRMHeaders.headers, proxies=proxies,
                                 json=json_data)
     else:
@@ -354,7 +350,6 @@ def request_youtube(wvdfile, ilicurl, country_code):
         if key.type != 'SIGNING':
             fkeys += key.kid.hex + ":" + key.key.hex() + "\n"
     print("")
-    print(fkeys)
     cdm.close(session_id)
     return fkeys
 
@@ -373,7 +368,7 @@ def request_canalplus(wvdfile, ipssh, country_code, channel, live_token):
         proxies = {
             "http": proxy
         }
-        print(f"Using proxy {proxies['http']}")
+        print("Using proxy.")
         licence = requests.post(ilicurl, headers=DRMHeaders.headers, proxies=proxies, json={
             'ServiceRequest': {
                 'InData': {
@@ -407,22 +402,20 @@ def request_canalplus(wvdfile, ipssh, country_code, channel, live_token):
         if key.type != 'SIGNING':
             fkeys += key.kid.hex + ":" + key.key.hex() + "\n"
     print("")
-    print(fkeys)
     cdm.close(session_id)
     return fkeys
 
 
 def start_process(command, directory):
     if args.verbose:
-        print(directory, " ".join(command))
+        print(directory, command[0])
     process = subprocess.Popen(command, cwd=directory, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    process.communicate()
+    _, stderr = process.communicate()
 
     if process.returncode != 0:
-        print(f"Failure to decrypt: {command[0]} exited with non-zero return code ({process.returncode})")
-        stderr = process.stderr.read().decode()
-        print(stderr)
-        exit(1)
+        print(f"Command failed: {command[0]} exited with non-zero return code ({process.returncode})")
+        print(stderr.decode(errors="replace"))
+        sys.exit(1)
     else:
         print("Process completed successfully.")
 
@@ -435,7 +428,7 @@ if __name__ == "__main__":
     parser.add_argument('-url', help='VIDEO INDEX.MPD URL')
     parser.add_argument('-lic', help='LICENSE URL')
     parser.add_argument('-pssh', help='PSSH')
-    parser.add_argument('-selection', default=7,
+    parser.add_argument('-selection', type=int, choices=range(1, 8), default=7,
                         help='Service Mode Selection (1-7) \n1. Generic without any headers \n2. '
                              'Generic with generic headers \n3. Generic with headers from DRMHeaders.py '
                              '\n4. JSON Widevine challenge, headers from DRMHeaders.py \n5. Canal+ Live '
@@ -471,7 +464,7 @@ if __name__ == "__main__":
     elif args.selection == 4:
         while args.lic is None or args.lic == "":
             args.lic = input('Enter license server:')
-        while args.pid is None or args.channel == "":
+        while args.pid is None or args.pid == "":
             args.pid = input('Enter PID:')
     elif args.selection == 5:
         while args.channel is None or args.channel == "":
@@ -491,8 +484,6 @@ if __name__ == "__main__":
     if args.selection != 7:
         args.xdtcd = ""
     custom_headers['X-Dt-Custom-Data'] = args.xdtcd
-
-    args.verbose = True
 
     if not os.path.isabs(args.out):  # If it's not an absolute path
         args.out = os.path.join(os.getcwd(), args.out)  # Add the current directory to the beginning
