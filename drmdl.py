@@ -2,6 +2,7 @@ import argparse
 import base64
 import os
 import subprocess
+import shutil
 import sys
 import tempfile
 from base64 import b64encode
@@ -294,7 +295,8 @@ def request_widevine_challenge(wvdfile, ipssh, ilicurl, pid, country_code):
     return fkeys
 
 
-def request_generic_drmheaderspy(wvdfile, ipssh, ilicurl, country_code):
+def request_generic_drmheaderspy(wvdfile, ipssh, ilicurl, country_code, headers=None):
+    headers = DRMHeaders.headers if headers is None else headers
     pssh = PSSH(ipssh)
     device = Device.load(wvdfile)
     cdm = Cdm.from_device(device)
@@ -307,10 +309,10 @@ def request_generic_drmheaderspy(wvdfile, ipssh, ilicurl, country_code):
             "http": proxy
         }
         print("Using proxy.")
-        licence = requests.post(ilicurl, data=challenge, headers=DRMHeaders.headers, proxies=proxies)
+        licence = requests.post(ilicurl, data=challenge, headers=headers, proxies=proxies, timeout=(10, 30))
     else:
         print("Proxy-less request.")
-        licence = requests.post(ilicurl, data=challenge, headers=DRMHeaders.headers)
+        licence = requests.post(ilicurl, data=challenge, headers=headers, timeout=(10, 30))
     licence.raise_for_status()
     cdm.parse_license(session_id, licence.content)
     fkeys = ""
@@ -420,6 +422,43 @@ def start_process(command, directory):
         print("Process completed successfully.")
 
 
+def download_video(url, decr_key, output, runner, notify):
+    """Run the existing media pipeline, publishing a complete file without overwriting."""
+    if os.path.exists(output):
+        raise FileExistsError("Output already exists. Choose a different filename.")
+    key_args = []
+    for key in decr_key.splitlines():
+        if key.strip():
+            key_args.extend(["--key", key.strip()])
+    if not key_args:
+        raise ValueError("The licence returned no content keys.")
+    with tempfile.TemporaryDirectory() as working_dir:
+        notify("Downloading audio and video")
+        runner(["yt-dlp", "-o", "file.%(ext)s", "--allow-u", "--external-downloader", "aria2c",
+                "-f", "bv[ext=mp4],ba[ext=m4a]", url], working_dir)
+        for label, filename in (("audio", "file.m4a"), ("video", "file.mp4")):
+            decrypted = "decrypted_" + filename
+            notify("Decrypting " + label)
+            runner(["mp4decrypt", *key_args, filename, decrypted], working_dir)
+            notify("Checking " + label)
+            runner(["ffprobe", "-v", "error", "-show_entries", "stream=codec_type", "-of",
+                    "default=noprint_wrappers=1:nokey=1", decrypted], working_dir)
+        notify("Combining audio and video")
+        merged = os.path.join(working_dir, "complete.mp4")
+        runner(["ffmpeg", "-n", "-i", "decrypted_file.mp4", "-i", "decrypted_file.m4a",
+                "-c", "copy", merged], working_dir)
+        notify("Saving video")
+        # Exclusive creation also protects against a file appearing during the download.
+        with open(output, "xb") as destination:
+            try:
+                with open(merged, "rb") as source:
+                    shutil.copyfileobj(source, destination)
+            except BaseException:
+                destination.close()
+                os.unlink(output)
+                raise
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('-wvd', help='Widevine devide file')
@@ -488,52 +527,8 @@ if __name__ == "__main__":
     if not os.path.isabs(args.out):  # If it's not an absolute path
         args.out = os.path.join(os.getcwd(), args.out)  # Add the current directory to the beginning
 
-    try:
-        # Request decryption key using wvd file
-        decr_key = request_decrkey(args.wvd, args.pssh, args.lic, args.cc, args.pid, args.selection, args.channel,
-                                   args.live_token)
-
-        # Create temp dir
-        temp_dir = tempfile.TemporaryDirectory()
-        working_dir = temp_dir.name
-        if args.verbose:
-            print("Creating temporary directory", working_dir)
-
-        if args.verbose:
-            print("Downloading Encrypted Audio/Video Files")
-        start_process(["yt-dlp", "-o", "file.%(ext)s", "--allow-u", "--external-downloader", "aria2c", "-f", "bv,ba",
-                       args.url], working_dir)
-
-        if args.verbose:
-            print("Decrypting Audio")
-        start_process(["mp4decrypt", "--key", decr_key, "file.m4a", "decrypted_audio.m4a"], working_dir)
-
-        if args.verbose:
-            print("Verifying Audio")
-        start_process(["ffprobe", "-v", "error", "-show_entries", "stream=codec_type", "-of",
-                       "default=noprint_wrappers=1:nokey=1", "decrypted_audio.m4a"], working_dir)
-
-        if args.verbose:
-            print("Decrypting Video")
-        start_process(["mp4decrypt", "--key", decr_key, "file.mp4", "decrypted_video.mp4"], working_dir)
-
-        if args.verbose:
-            print("Verifying Video")
-        start_process(["ffprobe", "-v", "error", "-show_entries", "stream=codec_type", "-of",
-                       "default=noprint_wrappers=1:nokey=1", "decrypted_video.mp4"], working_dir)
-
-        if args.verbose:
-            print("Combining Decrypted Video & Audio")
-        start_process(
-            ["ffmpeg", "-y", "-i", "decrypted_video.mp4", "-i", "decrypted_audio.m4a", "-c", "copy", args.out],
-            working_dir)
-
-        if args.verbose:
-            print("Deleting temporary files")
-        temp_dir.cleanup()
-
-        print("Done")
-
-    except Exception as e:
-        raise
-
+    decr_key = request_decrkey(args.wvd, args.pssh, args.lic, args.cc, args.pid, args.selection, args.channel,
+                               args.live_token)
+    download_video(args.url, decr_key, args.out, start_process,
+                   print if args.verbose else lambda message: None)
+    print("Done")

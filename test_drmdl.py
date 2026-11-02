@@ -30,6 +30,8 @@ class CliTests(unittest.TestCase):
         process = Mock(returncode=0)
         process.communicate.return_value = (b'', b'')
         with contextlib.ExitStack() as stack:
+            temp = stack.enter_context(tempfile.TemporaryDirectory())
+            argv[2] = str(Path(temp) / 'test.mp4')
             stack.enter_context(contextlib.redirect_stdout(output))
             stack.enter_context(contextlib.redirect_stderr(output))
             stack.enter_context(patch.object(sys, 'argv', argv))
@@ -40,7 +42,11 @@ class CliTests(unittest.TestCase):
             post = stack.enter_context(patch('requests.post', return_value=response))
             stack.enter_context(patch('httpx.get', side_effect=AssertionError('Unexpected network access')))
             stack.enter_context(patch('httpx.post', side_effect=AssertionError('Unexpected network access')))
-            popen = stack.enter_context(patch('subprocess.Popen', return_value=process))
+            def launch(command, **kwargs):
+                if command[0] == 'ffmpeg':
+                    Path(command[-1]).write_bytes(b'fake video')
+                return process
+            popen = stack.enter_context(patch('subprocess.Popen', side_effect=launch))
             stack.enter_context(patch.object(drmdl.DRMHeaders, 'json_data', {}, create=True))
             stack.enter_context(patch.object(drmdl.DRMHeaders, 'cookies', {}, create=True))
             runpy.run_path(str(Path(drmdl.__file__)), run_name='__main__')
@@ -81,7 +87,7 @@ class CliTests(unittest.TestCase):
                 self.assertNotIn('ab' * 16, output)
                 self.assertNotIn('https://example.invalid/video', output)
                 self.assertNotIn('private-token', output)
-                self.assertEqual('Creating temporary directory' in output, bool(flags))
+                self.assertEqual('Downloading audio and video' in output, bool(flags))
 
 
 class ProcessTests(unittest.TestCase):

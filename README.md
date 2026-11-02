@@ -32,6 +32,22 @@ The Python requirements do not install the external tools listed below. Those to
 4. [aria2](https://github.com/aria2/aria2)
 5. [yt-dlp](https://github.com/yt-dlp/yt-dlp)
 
+## Voyo window (Windows)
+
+Double-click `Start-Voyo.cmd`. The launcher needs Python 3.11 with Tcl/Tk and Google Chrome; it creates a Python environment and installs the GUI requirements on first use.
+
+During one-time setup, choose your existing `.wvd` device file and download folder. The external tools listed above, including `ffprobe` from FFmpeg, must already be installed. If a tool cannot be found, the app asks you to locate its executable. Settings are remembered when a download starts.
+
+For each episode:
+
+1. Paste an HTTPS episode link from `voyo.markiza.sk` and click **Download**.
+2. Sign in and play the episode in the Chrome window that opens.
+3. Once saved, click **Open folder** to find the video.
+
+Videos go to `Downloads/Voyo` by default. Repeat downloads receive numbered filenames; existing files are never replaced. **Settings** lets you change the device file and folder. Browser sign-in stays in a separate local profile.
+
+This window supports Voyo Markíza episode links only. Netflix and other platforms are not supported. Automated tests cover local parsing, filenames, cancellation, and the mocked download pipeline; they do not verify live Voyo downloads or the Windows interface.
+
 ## Python Requirements
 1. requests
 2. frida
