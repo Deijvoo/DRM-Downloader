@@ -32,7 +32,32 @@ The Python requirements do not install the external tools listed below. Those to
 4. [aria2](https://github.com/aria2/aria2)
 5. [yt-dlp](https://github.com/yt-dlp/yt-dlp)
 
-## Voyo window (Windows)
+## Use your existing Chrome login (Windows)
+
+The Chrome extension uses the Voyo tab you already have open. You do not need to sign in again in a separate browser window.
+
+### Install once
+
+1. Extract the latest repository ZIP into a folder you will keep. Python 3.11 with Tcl/Tk, the media tools below, and your existing `.wvd` file are still required.
+2. Double-click **`Setup-Chrome.cmd`**. It installs the Python requirements and registers the local connection for your Windows account; administrator access is not required.
+3. In your usual Chrome, open **`chrome://extensions`** and turn on **Developer mode**.
+4. Click **Load unpacked** and select the **`chrome-extension`** folder inside the extracted repository.
+5. Pin **Voyo Downloader** using Chrome's Extensions menu.
+
+### Download an episode
+
+1. Open the episode on **voyo.markiza.sk** in your usual Chrome profile.
+2. Click the extension, then **Use this Voyo tab**. The tab reloads so the app can identify the episode.
+3. Press **Play**. When the local download window opens, click **Download**. On first use, select your existing `.wvd` file and locate any missing media tools.
+4. Keep Chrome and the download window open until the video is saved. Click **Open folder** to find it.
+
+The extension sends the selected tab's manifest and matching playback authorisation to the local Python app through Chrome native messaging. It does not export cookies, copy your Chrome profile, or use a remote service. Capture stops after a match or ten minutes. Closing Chrome or disabling the extension while downloading can terminate the local app. Chrome will request permissions for the listed Voyo/media hosts and communication with native applications.
+
+If the extension cannot connect, rerun `Setup-Chrome.cmd` from the folder you currently use. If you move the folder, rerun setup and reload the extension from its new location. To uninstall, remove the extension from Chrome and delete the Windows registry key `HKEY_CURRENT_USER\Software\Google\Chrome\NativeMessagingHosts\com.deijvoo.voyo`.
+
+Only Voyo Markíza episode links are supported. The extension fetches the signed manifest without cookies; if that fails, it reports an error and you can try the separate-browser workflow below. Automated checks cover the bridge protocol and simulated browser events. Live Voyo playback and a full Windows Chrome download still need verification.
+
+## Separate-browser Voyo window (Windows)
 
 Double-click `Start-Voyo.cmd`. The launcher needs Python 3.11 with Tcl/Tk and Google Chrome; it creates a Python environment and installs the GUI requirements on first use.
 

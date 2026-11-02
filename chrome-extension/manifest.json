@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "Voyo Downloader",
+  "version": "0.2.0",
+  "minimum_chrome_version": "120",
+  "description": "Send the episode playing in your Voyo tab to your local downloader.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAox+AH7f8X3m1zgsswqfpj1Dq9SGf1KTma5gAColphQaCnZpBeWe2ncqr6Psu0tollW6rLDW0wK4Need11gJW5jzun8pG9kUfeNmZoO2YAW+sal2+ypFZyQ/2LAMNjarlHLBc4NiUsWdwRly+fxryqBDIRvz21nfhqg3yVvhvmZE6oVUSYujG5ZxiRvd3Frf/m7vNohPAUesz5rdC0zJda4q2vKpezNIt9jBDc8DcxMdpF6yaolVzAuaUSnHyz0nzx5GQn0LeZXElIwHfCyoxBsCPZ4tM/S1GSWUxQSkbFor8v+VOxgFdbigBzEEHeBUZ709rZxo1UK4zscXtDw7uYwIDAQAB",
+  "permissions": [
+    "activeTab",
+    "webRequest",
+    "nativeMessaging",
+    "alarms",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://*.markiza.sk/*",
+    "https://*.cdn.cra.cz/*",
+    "https://drm-widevine-licensing.axprod.net/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Voyo Downloader"
+  }
+}

@@ -202,7 +202,7 @@ def run_tool(command, directory, paths, notify, cancel):
                 process.wait(timeout=15)
 
 
-def main():
+def main(captured=None):
     import tkinter as tk
     from tkinter import ttk, filedialog, messagebox
 
@@ -220,9 +220,13 @@ def main():
     frame = ttk.Frame(root, padding=20)
     frame.pack(fill='both', expand=True)
     ttk.Label(frame, text='Download a Voyo episode', font=('Segoe UI', 17)).pack(anchor='w')
-    ttk.Label(frame, text='Paste an episode link. Chrome opens for sign-in and playback.').pack(anchor='w', pady=(8, 18))
-    url = tk.StringVar()
+    hint = ('Episode received from your Chrome tab. Click Download to save it.' if captured else
+            'Paste an episode link, or use the extension in your usual Chrome.')
+    ttk.Label(frame, text=hint).pack(anchor='w', pady=(8, 18))
+    url = tk.StringVar(value=captured[0] if captured else '')
     entry = ttk.Entry(frame, textvariable=url)
+    if captured:
+        entry.config(state='readonly')
     entry.pack(fill='x')
     entry.focus()
     device = tk.StringVar(value=settings.get('device', ''))
@@ -266,7 +270,7 @@ def main():
     def work(link, wvd, output, paths):
         try:
             Device.load(wvd)
-            stream, pssh, headers = capture_episode(link, notify, cancel)
+            stream, pssh, headers = captured[1] if captured else capture_episode(link, notify, cancel)
             notify('Requesting the episode licence')
             keys = drmdl.request_generic_drmheaderspy(wvd, pssh, LICENSE, '', headers=headers)
             drmdl.download_video(stream, keys, output,
@@ -315,7 +319,7 @@ def main():
         setup.pack_forget()
         cancel_button.config(state='normal')
         progress.start()
-        status.set('Opening Chrome…')
+        status.set('Starting download…' if captured else 'Opening Chrome…')
         threading.Thread(target=work, args=(link, str(wvd.resolve()), output, paths), daemon=True).start()
 
     def stop():
